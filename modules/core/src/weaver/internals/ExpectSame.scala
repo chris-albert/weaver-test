@@ -13,27 +13,19 @@ private[weaver] trait ExpectSame {
       expected: A,
       found: A)(
       implicit eqA: Eq[A],
-      showA: Show[A] = Show.fromToString[A],
+      showDiff: ShowDiff[A],
       loc: SourceLocation): Expectations = {
 
     if (eqA.eqv(expected, found))
       Expectations(Validated.validNel(()))
     else {
-      val header = "Values not equal:"
 
-      val expectedLines = showA.show(expected).linesIterator.toSeq
-      val foundLines    = showA.show(found).linesIterator.toSeq
       val sourceLocs    = NonEmptyList.of(loc)
-      val diff = DiffUtil
-        .mkColoredLineDiff(expectedLines, foundLines)
-        .linesIterator
-        .toSeq
-        .map(str => Console.RESET.toString + str)
-        .mkString("\n")
+      val diff = showDiff.diff(expected, found)
 
       Expectations(
         Validated.invalidNel[AssertionException, Unit](
-          new AssertionException(header + "\n\n" + diff, sourceLocs)))
+          new AssertionException(diff, sourceLocs)))
     }
   }
 
